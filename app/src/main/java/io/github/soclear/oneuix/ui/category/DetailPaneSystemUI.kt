@@ -1107,6 +1107,9 @@ sealed interface SystemUIEvent {
 
         @JvmInline
         value class HideLockscreenStatusBar(val value: Boolean) : StatusBar
+        
+        @JvmInline
+        value class StackedDualSimSignal(val value: Boolean) : StatusBar
     }
 
     sealed interface QS : SystemUIEvent {
@@ -1524,6 +1527,16 @@ private fun SettingViewModel.onStatusBarEvent(event: SystemUIEvent.StatusBar) {
                     systemUI = preference.systemUI.copy(
                         statusBar = preference.systemUI.statusBar.copy(
                             customCarrierName = event.value
+                        )
+                    )
+                )
+            }
+            
+            is SystemUIEvent.StatusBar.StackedDualSimSignal -> {
+                preference.copy(
+                    systemUI = preference.systemUI.copy(
+                        statusBar = preference.systemUI.statusBar.copy(
+                            stackedDualSimSignal = event.value
                         )
                     )
                 )
