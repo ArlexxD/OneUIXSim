@@ -264,6 +264,7 @@ object StackedSignal {
     }
 
     @SuppressLint("MissingPermission")
+    context(xposedModule: XposedModule)
     private fun registerSlotCallback(context: Context?, slot: Int, subId: Int) {
         if (context == null || !SubscriptionManager.isValidSubscriptionId(subId)) return
         if (registeredCallbacks.containsKey(subId)) return
@@ -295,7 +296,7 @@ object StackedSignal {
             refreshAllViews()
         }
 
-        override fun onActiveDataSubscriptionIdChanged(subId: Int) {
+        override fun onActiveDataSubscriptionIdChanged(activeSubId: Int) {
             refreshAllSlotLevels()
             refreshAllViews()
         }
@@ -328,11 +329,12 @@ object StackedSignal {
 
     private fun getTelephonyManager(context: Context?, subId: Int): TelephonyManager? {
         if (context == null || !SubscriptionManager.isValidSubscriptionId(subId)) return null
-        return telephonyManagersBySubId.computeIfAbsent(subId) {
-            context.getSystemService(TelephonyManager::class.java)
-                ?.createForSubscriptionId(subId)
-                ?: return@computeIfAbsent null
-        }
+        telephonyManagersBySubId[subId]?.let { return it }
+        val tm = context
+            .getSystemService(TelephonyManager::class.java)
+            ?.createForSubscriptionId(subId)
+            ?: return null
+        return telephonyManagersBySubId.putIfAbsent(subId, tm) ?: tm
     }
 
     @SuppressLint("DiscouragedApi")
@@ -423,7 +425,7 @@ object StackedSignal {
             val dotTopY = topBaseY + gapY
             val dotBottomY = dotTopY + dotH
 
-            val baseColor = tintList?.getColorForState(state, tintList!!.defaultColor) ?: Color.WHITE
+            val baseColor = tintList?.let { it.getColorForState(state, it.defaultColor) } ?: Color.WHITE
             val activeAlpha = (Color.alpha(baseColor) * drawableAlpha) / 255
             val inactiveAlpha = (activeAlpha * 0.36f).roundToInt()
 
