@@ -401,7 +401,6 @@ fun DetailPaneSystemUI(
                 onEvent(SystemUIEvent.StatusBar.HideSecureFolderStatusBarIcon(it))
             }
         )
-        
         SwitchItem(
             icon = ImageVector.vectorResource(id = R.drawable.bluetooth),
             title = stringResource(id = R.string.restoreBluetoothStatusBarIcon_title),
@@ -418,17 +417,7 @@ fun DetailPaneSystemUI(
             onCheckedChange = {
                 onEvent(SystemUIEvent.StatusBar.PhysicalEsimAdapterWorkaround(it))
             }
-            
-        SwitchItem(
-            icon = ImageVector.vectorResource(id = R.drawable.sim_card),
-            title = "Sinal Dual-SIM empilhado",
-            summary = "Mostra as barras do SIM 1 por cima dos pontos do SIM 2",
-            checked = uiState.statusBar.stackedDualSimSignal,
-            onCheckedChange = {
-                onEvent(SystemUIEvent.StatusBar.StackedDualSimSignal(it))
-            }
         )
-
         AnimatedVisibility(uiState.statusBar.physicalEsimAdapterWorkaround) {
             SelectItem(
                 icon = ImageVector.vectorResource(id = R.drawable.sim_card),
@@ -447,6 +436,15 @@ fun DetailPaneSystemUI(
                 }
             )
         }
+        SwitchItem(
+            icon = ImageVector.vectorResource(id = R.drawable.sim_card),
+            title = "Sinal Dual-SIM empilhado",
+            summary = "Mostra as barras do SIM 1 por cima dos pontos do SIM 2",
+            checked = uiState.statusBar.stackedDualSimSignal,
+            onCheckedChange = {
+                onEvent(SystemUIEvent.StatusBar.StackedDualSimSignal(it))
+            }
+        )
         SwitchItem(
             icon = ImageVector.vectorResource(id = R.drawable.mobile_screensaver),
             title = stringResource(id = R.string.doubleTapStatusBarToSleep_title),
@@ -1107,7 +1105,7 @@ sealed interface SystemUIEvent {
 
         @JvmInline
         value class HideLockscreenStatusBar(val value: Boolean) : StatusBar
-        
+
         @JvmInline
         value class StackedDualSimSignal(val value: Boolean) : StatusBar
     }
@@ -1531,7 +1529,7 @@ private fun SettingViewModel.onStatusBarEvent(event: SystemUIEvent.StatusBar) {
                     )
                 )
             }
-            
+
             is SystemUIEvent.StatusBar.StackedDualSimSignal -> {
                 preference.copy(
                     systemUI = preference.systemUI.copy(
