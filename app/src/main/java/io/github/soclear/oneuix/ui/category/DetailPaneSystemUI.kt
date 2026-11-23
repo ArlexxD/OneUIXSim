@@ -401,6 +401,7 @@ fun DetailPaneSystemUI(
                 onEvent(SystemUIEvent.StatusBar.HideSecureFolderStatusBarIcon(it))
             }
         )
+        
         SwitchItem(
             icon = ImageVector.vectorResource(id = R.drawable.bluetooth),
             title = stringResource(id = R.string.restoreBluetoothStatusBarIcon_title),
@@ -417,7 +418,17 @@ fun DetailPaneSystemUI(
             onCheckedChange = {
                 onEvent(SystemUIEvent.StatusBar.PhysicalEsimAdapterWorkaround(it))
             }
+            
+        SwitchItem(
+            icon = ImageVector.vectorResource(id = R.drawable.sim_card),
+            title = "Sinal Dual-SIM empilhado",
+            summary = "Mostra as barras do SIM 1 por cima dos pontos do SIM 2",
+            checked = uiState.statusBar.stackedDualSimSignal,
+            onCheckedChange = {
+                onEvent(SystemUIEvent.StatusBar.StackedDualSimSignal(it))
+            }
         )
+
         AnimatedVisibility(uiState.statusBar.physicalEsimAdapterWorkaround) {
             SelectItem(
                 icon = ImageVector.vectorResource(id = R.drawable.sim_card),
