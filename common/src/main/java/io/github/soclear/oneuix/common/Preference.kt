@@ -67,6 +67,8 @@ data class Preference(
             val customCarrierName: String = "",
             val hideLockscreenStatusBar: Boolean = false,
             val restoreBluetoothStatusBarIcon: Boolean = false,
+            val stackedDualSimSignal: Boolean = false,
+
         ) {
             @Serializable
             data class NetWorkSpeed(
