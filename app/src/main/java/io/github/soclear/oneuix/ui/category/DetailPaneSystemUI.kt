@@ -439,10 +439,19 @@ fun DetailPaneSystemUI(
         SwitchItem(
             icon = ImageVector.vectorResource(id = R.drawable.sim_card),
             title = "Sinal Dual-SIM empilhado",
-            summary = "Mostra as barras do SIM 1 por cima dos pontos do SIM 2",
+            summary = "Mostra as barras do SIM principal por cima dos pontos do SIM secundário",
             checked = uiState.statusBar.stackedDualSimSignal,
             onCheckedChange = {
                 onEvent(SystemUIEvent.StatusBar.StackedDualSimSignal(it))
+            }
+        )
+        SwitchItem(
+            icon = ImageVector.vectorResource(id = R.drawable.net_speed),
+            title = "Ícone de Wi-Fi estilo One UI 8.5",
+            summary = "Usa arcos mais encorpados e alinhados com o sinal de rede",
+            checked = uiState.statusBar.wifiSignalStyle85,
+            onCheckedChange = {
+                onEvent(SystemUIEvent.StatusBar.WifiSignalStyle85(it))
             }
         )
         SwitchItem(
@@ -1108,6 +1117,9 @@ sealed interface SystemUIEvent {
 
         @JvmInline
         value class StackedDualSimSignal(val value: Boolean) : StatusBar
+
+        @JvmInline
+        value class WifiSignalStyle85(val value: Boolean) : StatusBar
     }
 
     sealed interface QS : SystemUIEvent {
@@ -1535,6 +1547,16 @@ private fun SettingViewModel.onStatusBarEvent(event: SystemUIEvent.StatusBar) {
                     systemUI = preference.systemUI.copy(
                         statusBar = preference.systemUI.statusBar.copy(
                             stackedDualSimSignal = event.value
+                        )
+                    )
+                )
+            }
+
+            is SystemUIEvent.StatusBar.WifiSignalStyle85 -> {
+                preference.copy(
+                    systemUI = preference.systemUI.copy(
+                        statusBar = preference.systemUI.statusBar.copy(
+                            wifiSignalStyle85 = event.value
                         )
                     )
                 )
