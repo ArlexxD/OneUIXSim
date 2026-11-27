@@ -1,3 +1,4 @@
+
 package io.github.soclear.oneuix.hook.systemui.statusbar
 
 import android.annotation.SuppressLint
@@ -32,6 +33,7 @@ import kotlin.math.roundToInt
 
 @SuppressLint("StaticFieldLeak", "PrivateApi")
 object StackedSignal {
+
     private data class MobileViewMeta(
         val slot: Int,
         val subId: Int?,
@@ -40,10 +42,13 @@ object StackedSignal {
 
     private val trackedMobileViews: MutableMap<View, MobileViewMeta> =
         Collections.synchronizedMap(WeakHashMap())
+
     private val trackedSignalViews: MutableMap<ImageView, View> =
         Collections.synchronizedMap(WeakHashMap())
+
     private val signalDrawables: MutableMap<ImageView, StackedSignalDrawable> =
         Collections.synchronizedMap(WeakHashMap())
+
     private val hiddenMobileViews: MutableSet<View> =
         Collections.synchronizedSet(Collections.newSetFromMap(WeakHashMap()))
 
@@ -69,8 +74,11 @@ object StackedSignal {
                         val context = (chain.args.getOrNull(0) as? Context) ?: view.context
                         appContext = context.applicationContext ?: context
 
-                        val viewModel = chain.args.getOrNull(3) ?: return@intercept result
+                        val viewModel = chain.args.getOrNull(3)
+                            ?: return@intercept result
+
                         val subId = getMobileViewModelSubId(viewModel)
+
                         val slot = subId
                             ?.let(SubscriptionManager::getSlotIndex)
                             ?.takeIf { it >= 0 }
@@ -83,13 +91,19 @@ object StackedSignal {
                                 registerSlotCallback(appContext, slot, subId)
                                 updateSlotLevel(slot, subId)
                             }
+
                             val signalView = findSignalImageView(view)
-                            trackedMobileViews[view] = MobileViewMeta(slot, subId, signalView)
+
+                            trackedMobileViews[view] =
+                                MobileViewMeta(slot, subId, signalView)
+
                             if (signalView != null) {
                                 trackedSignalViews[signalView] = view
                             }
+
                             refreshAllViews()
                         }
+
                         result
                     }
                 }
@@ -101,30 +115,39 @@ object StackedSignal {
             val modernStatusBarViewClass = classLoader.loadClass(
                 "com.android.systemui.statusbar.pipeline.shared.ui.view.ModernStatusBarView"
             )
+
             val setVisibleStateMethod = modernStatusBarViewClass.getDeclaredMethod(
                 "setVisibleState",
                 Int::class.javaPrimitiveType,
                 Boolean::class.javaPrimitiveType
             )
+
             xposedModule.hook(setVisibleStateMethod).intercept { chain ->
                 val view = chain.thisObject as? View
                 val meta = view?.let { trackedMobileViews[it] }
+
                 val result = if (meta != null && shouldHideSlot(meta.slot)) {
                     val newArgs = chain.args.toTypedArray()
-                    newArgs[0] = 2 // STATE_HIDDEN
+                    newArgs[0] = 2
                     chain.proceed(newArgs)
                 } else {
                     chain.proceed()
                 }
+
                 if (view != null && meta != null) {
                     applyViewState(view, meta)
                 }
+
                 result
             }
 
-            val isIconVisibleMethod = modernStatusBarViewClass.getDeclaredMethod("isIconVisible")
+            val isIconVisibleMethod =
+                modernStatusBarViewClass.getDeclaredMethod("isIconVisible")
+
             xposedModule.hook(isIconVisibleMethod).intercept { chain ->
-                val meta = (chain.thisObject as? View)?.let { trackedMobileViews[it] }
+                val meta = (chain.thisObject as? View)
+                    ?.let { trackedMobileViews[it] }
+
                 if (meta != null && shouldHideSlot(meta.slot)) {
                     false
                 } else {
@@ -140,8 +163,10 @@ object StackedSignal {
                 "setImageDrawable",
                 Drawable::class.java
             )
+
             xposedModule.hook(setImageDrawableMethod).intercept { chain ->
                 val imageView = chain.thisObject as? ImageView
+
                 val mobileView = imageView?.let { trackedSignalViews[it] }
                     ?: return@intercept chain.proceed()
 
@@ -150,7 +175,9 @@ object StackedSignal {
                 }
 
                 refreshAllSlotLevels()
+
                 val meta = trackedMobileViews[mobileView]
+
                 if (meta != null && isDualSimActive() && !shouldHideSlot(meta.slot)) {
                     val newArgs = chain.args.toTypedArray()
                     newArgs[0] = getOrUpdateDrawable(imageView)
@@ -164,13 +191,16 @@ object StackedSignal {
                 "setImageResource",
                 Int::class.javaPrimitiveType
             )
+
             xposedModule.hook(setImageResourceMethod).intercept { chain ->
                 val imageView = chain.thisObject as? ImageView
                 val mobileView = imageView?.let { trackedSignalViews[it] }
                     ?: return@intercept chain.proceed()
 
                 refreshAllSlotLevels()
+
                 val meta = trackedMobileViews[mobileView]
+
                 if (meta != null && isDualSimActive() && !shouldHideSlot(meta.slot)) {
                     imageView.setImageDrawable(getOrUpdateDrawable(imageView))
                     null
@@ -183,14 +213,18 @@ object StackedSignal {
                 "setImageLevel",
                 Int::class.javaPrimitiveType
             )
+
             xposedModule.hook(setImageLevelMethod).intercept { chain ->
                 val imageView = chain.thisObject as? ImageView
+
                 if (imageView == null || imageView !in trackedSignalViews) {
                     return@intercept chain.proceed()
                 }
+
                 val result = chain.proceed()
                 refreshAllSlotLevels()
                 refreshAllViews()
+
                 result
             }
         } catch (t: Throwable) {
@@ -199,20 +233,31 @@ object StackedSignal {
     }
 
     private fun getPrimarySlot(): Int {
-        val dataSubId = runCatching { SubscriptionManager.getDefaultDataSubscriptionId() }.getOrNull()
-        if (dataSubId != null && SubscriptionManager.isValidSubscriptionId(dataSubId)) {
+        val dataSubId = runCatching {
+            SubscriptionManager.getDefaultDataSubscriptionId()
+        }.getOrNull()
+
+        if (dataSubId != null &&
+            SubscriptionManager.isValidSubscriptionId(dataSubId)
+        ) {
             val slot = SubscriptionManager.getSlotIndex(dataSubId)
             if (slot in 0..1) return slot
         }
+
         return 0
     }
 
     @SuppressLint("MissingPermission")
     private fun isDualSimActive(): Boolean {
         val sm = appContext?.getSystemService(SubscriptionManager::class.java)
-        val activeCount = runCatching { sm?.activeSubscriptionInfoList?.size }.getOrNull()
+        val activeCount = runCatching {
+            sm?.activeSubscriptionInfoList?.size
+        }.getOrNull()
+
         if (activeCount != null) return activeCount >= 2
-        return activeSlotSubIds.containsKey(0) && activeSlotSubIds.containsKey(1)
+
+        return activeSlotSubIds.containsKey(0) &&
+            activeSlotSubIds.containsKey(1)
     }
 
     private fun shouldHideSlot(slot: Int): Boolean {
@@ -221,7 +266,10 @@ object StackedSignal {
     }
 
     private fun refreshAllViews() {
-        val entries = synchronized(trackedMobileViews) { trackedMobileViews.entries.toList() }
+        val entries = synchronized(trackedMobileViews) {
+            trackedMobileViews.entries.toList()
+        }
+
         entries.forEach { (view, meta) ->
             applyViewState(view, meta)
         }
@@ -240,9 +288,11 @@ object StackedSignal {
             if (hiddenMobileViews.remove(view)) {
                 view.visibility = View.VISIBLE
             }
+
             if (isDualSimActive()) {
                 val signalView = meta.signalView ?: return
                 val drawable = getOrUpdateDrawable(signalView)
+
                 if (signalView.drawable !== drawable) {
                     signalView.setImageDrawable(drawable)
                 } else {
@@ -259,20 +309,32 @@ object StackedSignal {
                 StackedSignalDrawable(imageView.resources.displayMetrics.density)
             }
         }
+
         val primarySlot = getPrimarySlot()
         val secondarySlot = if (primarySlot == 0) 1 else 0
+
         drawable.topLevel = slotLevels[primarySlot] ?: 0
         drawable.bottomLevel = slotLevels[secondarySlot] ?: 0
+
         return drawable
     }
 
     @SuppressLint("MissingPermission")
     context(xposedModule: XposedModule)
-    private fun registerSlotCallback(context: Context?, slot: Int, subId: Int) {
-        if (context == null || !SubscriptionManager.isValidSubscriptionId(subId)) return
+    private fun registerSlotCallback(
+        context: Context?,
+        slot: Int,
+        subId: Int,
+    ) {
+        if (context == null ||
+            !SubscriptionManager.isValidSubscriptionId(subId)
+        ) return
+
         if (registeredCallbacks.containsKey(subId)) return
+
         val tm = getTelephonyManager(context, subId) ?: return
         val callback = SlotTelephonyCallback(slot, subId)
+
         runCatching {
             tm.registerTelephonyCallback(context.mainExecutor, callback)
             registeredCallbacks[subId] = callback
@@ -319,48 +381,76 @@ object StackedSignal {
         serviceState: ServiceState? = null,
     ) {
         val tm = getTelephonyManager(appContext, subId) ?: return
-        val state = (serviceState ?: runCatching { tm.serviceState }.getOrNull())?.state
+
+        val state = (serviceState ?: runCatching {
+            tm.serviceState
+        }.getOrNull())?.state
+
         val level = when (state) {
             ServiceState.STATE_OUT_OF_SERVICE,
             ServiceState.STATE_POWER_OFF,
             ServiceState.STATE_EMERGENCY_ONLY -> 0
-            else -> ((signalStrength ?: runCatching { tm.signalStrength }.getOrNull())?.level ?: 0)
-                .coerceIn(0, 4)
+
+            else -> ((signalStrength ?: runCatching {
+                tm.signalStrength
+            }.getOrNull())?.level ?: 0).coerceIn(0, 4)
         }
+
         slotLevels[slot] = level
     }
 
-    private fun getTelephonyManager(context: Context?, subId: Int): TelephonyManager? {
-        if (context == null || !SubscriptionManager.isValidSubscriptionId(subId)) return null
+    private fun getTelephonyManager(
+        context: Context?,
+        subId: Int,
+    ): TelephonyManager? {
+        if (context == null ||
+            !SubscriptionManager.isValidSubscriptionId(subId)
+        ) return null
+
         telephonyManagersBySubId[subId]?.let { return it }
+
         val tm = context
             .getSystemService(TelephonyManager::class.java)
             ?.createForSubscriptionId(subId)
             ?: return null
+
         return telephonyManagersBySubId.putIfAbsent(subId, tm) ?: tm
     }
 
     @SuppressLint("DiscouragedApi")
     private fun findSignalImageView(root: View): ImageView? {
-        val directId = root.resources.getIdentifier("mobile_signal", "id", Package.SYSTEMUI)
+        val directId = root.resources.getIdentifier(
+            "mobile_signal",
+            "id",
+            Package.SYSTEMUI
+        )
+
         if (directId != 0) {
             root.findViewById<ImageView>(directId)?.let { return it }
         }
+
         return findSignalImageViewRecursive(root)
     }
 
     private fun findSignalImageViewRecursive(view: View): ImageView? {
         if (view is ImageView && view.id != View.NO_ID) {
-            val name = runCatching { view.resources.getResourceEntryName(view.id) }.getOrNull()
+            val name = runCatching {
+                view.resources.getResourceEntryName(view.id)
+            }.getOrNull()
+
             if (name != null && name.contains("signal", ignoreCase = true)) {
                 return view
             }
         }
+
         if (view is ViewGroup) {
             for (i in 0 until view.childCount) {
-                findSignalImageViewRecursive(view.getChildAt(i))?.let { return it }
+                findSignalImageViewRecursive(view.getChildAt(i))?.let {
+                    return it
+                }
             }
         }
+
         return null
     }
 
@@ -368,24 +458,29 @@ object StackedSignal {
         runCatching {
             val commonImpl = viewModel.reflect["commonImpl"]!!
             val slot = commonImpl.reflect["slotId"] as Int
+
             if (slot >= 0) return slot
         }
+
         runCatching {
             val subId = viewModel.reflect.call("getSubscriptionId") as Int
             val slot = SubscriptionManager.getSlotIndex(subId)
+
             if (slot >= 0) return slot
         }
+
         return null
     }
 
     private fun getMobileViewModelSubId(viewModel: Any): Int? =
-        runCatching { viewModel.reflect.call("getSubscriptionId") as Int }
-            .getOrNull()
-            ?.takeIf(SubscriptionManager::isValidSubscriptionId)
+        runCatching {
+            viewModel.reflect.call("getSubscriptionId") as Int
+        }.getOrNull()?.takeIf(SubscriptionManager::isValidSubscriptionId)
 
     private class StackedSignalDrawable(
         private val density: Float,
     ) : Drawable() {
+
         @Volatile
         var topLevel: Int = 0
 
@@ -399,11 +494,22 @@ object StackedSignal {
         private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.FILL
         }
-        private val rect = RectF()
-        private val topRatios = floatArrayOf(0.36f, 0.57f, 0.78f, 1.0f)
 
-        override fun getIntrinsicWidth(): Int = (17.6f * density).roundToInt()
-        override fun getIntrinsicHeight(): Int = (13.4f * density).roundToInt()
+        private val rect = RectF()
+
+        private val topRatios = floatArrayOf(
+            0.36f,
+            0.57f,
+            0.78f,
+            1.0f
+        )
+
+        // Dimensões originais preservadas.
+        override fun getIntrinsicWidth(): Int =
+            (17.6f * density).roundToInt()
+
+        override fun getIntrinsicHeight(): Int =
+            (13.4f * density).roundToInt()
 
         override fun draw(canvas: Canvas) {
             val b = bounds
@@ -412,7 +518,7 @@ object StackedSignal {
             val w = b.width().toFloat()
             val h = b.height().toFloat()
 
-            // Folga equilibrada entre Wi-Fi (esquerda) e bateria (direita)
+            // Margens originais preservadas.
             val padLeft = w * 0.11f
             val padRight = w * 0.10f
             val padTop = h * 0.08f
@@ -421,24 +527,35 @@ object StackedSignal {
             val uw = w - padLeft - padRight
             val uh = h - padTop - padBottom
 
-            // Grossura cheia estilo v1: 4 barras + 3 espaços de 0.62 * barW = 5.86 * barW
+            // Barras superiores: geometria original.
             val barW = uw / 5.86f
             val gapX = barW * 0.62f
             val barRadius = barW / 2f
 
-            // Pontos do SIM 2 grossos e nítidos como na v1, sem ultrapassar a 1ª barra do SIM 1
-            val dotH = (barW * 1.02f).coerceAtMost(uh * 0.23f)
+            // ÚNICA alteração geométrica:
+            // indicadores inferiores mais verticais,
+            // mantendo a mesma largura e o mesmo alinhamento.
+            val dotH = (barW * 1.30f).coerceAtMost(uh * 0.27f)
             val dotRadius = min(barW, dotH) / 2f
+
+            // Espaçamento original preservado.
             val gapY = (barW * 0.52f).coerceAtMost(uh * 0.11f)
+
             val topMaxH = (uh - dotH - gapY).coerceAtLeast(barW)
 
             val topBaseY = b.top + padTop + topMaxH
             val dotTopY = topBaseY + gapY
             val dotBottomY = dotTopY + dotH
 
-            val baseColor = tintList?.let { it.getColorForState(state, it.defaultColor) } ?: Color.WHITE
-            val activeAlpha = (Color.alpha(baseColor) * drawableAlpha) / 255
-            val inactiveAlpha = (activeAlpha * 0.36f).roundToInt()
+            val baseColor = tintList?.let {
+                it.getColorForState(state, it.defaultColor)
+            } ?: Color.WHITE
+
+            val activeAlpha =
+                (Color.alpha(baseColor) * drawableAlpha) / 255
+
+            val inactiveAlpha =
+                (activeAlpha * 0.36f).roundToInt()
 
             paint.colorFilter = activeColorFilter
 
@@ -446,18 +563,53 @@ object StackedSignal {
                 val left = b.left + padLeft + i * (barW + gapX)
                 val right = left + barW
 
-                // SIM principal / dados móveis (barras superiores)
-                val barH = (topMaxH * topRatios[i]).coerceAtLeast(barW)
-                paint.color = baseColor
-                paint.alpha = if (topLevel > i) activeAlpha else inactiveAlpha
-                rect.set(left, topBaseY - barH, right, topBaseY)
-                canvas.drawRoundRect(rect, barRadius, barRadius, paint)
+                // SIM principal: barras superiores.
+                val barH = (topMaxH * topRatios[i])
+                    .coerceAtLeast(barW)
 
-                // SIM secundário (pontos encorpados inferiores)
                 paint.color = baseColor
-                paint.alpha = if (bottomLevel > i) activeAlpha else inactiveAlpha
-                rect.set(left, dotTopY, right, dotBottomY)
-                canvas.drawRoundRect(rect, dotRadius, dotRadius, paint)
+                paint.alpha = if (topLevel > i) {
+                    activeAlpha
+                } else {
+                    inactiveAlpha
+                }
+
+                rect.set(
+                    left,
+                    topBaseY - barH,
+                    right,
+                    topBaseY
+                )
+
+                canvas.drawRoundRect(
+                    rect,
+                    barRadius,
+                    barRadius,
+                    paint
+                )
+
+                // SIM secundário: cápsulas inferiores.
+                // O nível e a opacidade continuam iguais.
+                paint.color = baseColor
+                paint.alpha = if (bottomLevel > i) {
+                    activeAlpha
+                } else {
+                    inactiveAlpha
+                }
+
+                rect.set(
+                    left,
+                    dotTopY,
+                    right,
+                    dotBottomY
+                )
+
+                canvas.drawRoundRect(
+                    rect,
+                    dotRadius,
+                    dotRadius,
+                    paint
+                )
             }
         }
 
@@ -476,13 +628,15 @@ object StackedSignal {
             invalidateSelf()
         }
 
-        override fun isStateful(): Boolean = tintList?.isStateful == true
+        override fun isStateful(): Boolean =
+            tintList?.isStateful == true
 
         override fun onStateChange(state: IntArray): Boolean {
             if (tintList != null) {
                 invalidateSelf()
                 return true
             }
+
             return false
         }
 
