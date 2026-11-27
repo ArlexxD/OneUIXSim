@@ -194,6 +194,7 @@ object StackedSignal {
 
             xposedModule.hook(setImageResourceMethod).intercept { chain ->
                 val imageView = chain.thisObject as? ImageView
+
                 val mobileView = imageView?.let { trackedSignalViews[it] }
                     ?: return@intercept chain.proceed()
 
@@ -504,12 +505,13 @@ object StackedSignal {
             1.0f
         )
 
-        // Dimensões originais preservadas.
+        // Largura preservada.
         override fun getIntrinsicWidth(): Int =
             (17.6f * density).roundToInt()
 
+        // Altura aumentada para dar mais presença vertical.
         override fun getIntrinsicHeight(): Int =
-            (13.4f * density).roundToInt()
+            (15.2f * density).roundToInt()
 
         override fun draw(canvas: Canvas) {
             val b = bounds
@@ -518,29 +520,27 @@ object StackedSignal {
             val w = b.width().toFloat()
             val h = b.height().toFloat()
 
-            // Margens originais preservadas.
+            // Margens ajustadas para aproveitar a nova altura.
             val padLeft = w * 0.11f
             val padRight = w * 0.10f
-            val padTop = h * 0.08f
-            val padBottom = h * 0.10f
+            val padTop = h * 0.06f
+            val padBottom = h * 0.04f
 
             val uw = w - padLeft - padRight
             val uh = h - padTop - padBottom
 
-            // Barras superiores: geometria original.
+            // Geometria horizontal original.
             val barW = uw / 5.86f
             val gapX = barW * 0.62f
             val barRadius = barW / 2f
 
-            // ÚNICA alteração geométrica:
-            // indicadores inferiores mais verticais,
-            // mantendo a mesma largura e o mesmo alinhamento.
+            // Indicadores inferiores ligeiramente mais verticais.
             val dotH = (barW * 1.30f).coerceAtMost(uh * 0.27f)
             val dotRadius = min(barW, dotH) / 2f
 
-            // Espaçamento original preservado.
             val gapY = (barW * 0.52f).coerceAtMost(uh * 0.11f)
 
+            // O espaço vertical adicional aumenta as barras superiores.
             val topMaxH = (uh - dotH - gapY).coerceAtLeast(barW)
 
             val topBaseY = b.top + padTop + topMaxH
@@ -588,8 +588,8 @@ object StackedSignal {
                     paint
                 )
 
-                // SIM secundário: cápsulas inferiores.
-                // O nível e a opacidade continuam iguais.
+                // SIM secundário: indicadores inferiores.
+                // Mantém a atualização real dos níveis de sinal.
                 paint.color = baseColor
                 paint.alpha = if (bottomLevel > i) {
                     activeAlpha
@@ -641,6 +641,7 @@ object StackedSignal {
         }
 
         @Deprecated("Deprecated in Java")
-        override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
+        override fun getOpacity(): Int =
+            PixelFormat.TRANSLUCENT
     }
 }
