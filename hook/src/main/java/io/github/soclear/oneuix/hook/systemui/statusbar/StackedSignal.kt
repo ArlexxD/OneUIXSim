@@ -27,6 +27,7 @@ import io.github.soclear.oneuix.hook.util.xlog
 import java.util.Collections
 import java.util.WeakHashMap
 import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.min
 import kotlin.math.roundToInt
 
 @SuppressLint("StaticFieldLeak", "PrivateApi")
@@ -401,8 +402,8 @@ object StackedSignal {
         private val rect = RectF()
         private val topRatios = floatArrayOf(0.36f, 0.57f, 0.78f, 1.0f)
 
-        override fun getIntrinsicWidth(): Int = (14.8f * density).roundToInt()
-        override fun getIntrinsicHeight(): Int = (13.0f * density).roundToInt()
+        override fun getIntrinsicWidth(): Int = (17.6f * density).roundToInt()
+        override fun getIntrinsicHeight(): Int = (13.4f * density).roundToInt()
 
         override fun draw(canvas: Canvas) {
             val b = bounds
@@ -411,21 +412,24 @@ object StackedSignal {
             val w = b.width().toFloat()
             val h = b.height().toFloat()
 
-            val padLeft = w * 0.04f
+            // Folga equilibrada entre Wi-Fi (esquerda) e bateria (direita)
+            val padLeft = w * 0.11f
             val padRight = w * 0.10f
-            val padTop = h * 0.09f
-            val padBottom = h * 0.14f
+            val padTop = h * 0.08f
+            val padBottom = h * 0.10f
 
             val uw = w - padLeft - padRight
             val uh = h - padTop - padBottom
 
-            val barW = uw / 5.68f
-            val gapX = barW * 0.56f
+            // Grossura cheia estilo v1: 4 barras + 3 espaços de 0.62 * barW = 5.86 * barW
+            val barW = uw / 5.86f
+            val gapX = barW * 0.62f
             val barRadius = barW / 2f
 
-            val dotH = (uh * 0.15f).coerceAtMost(barW * 0.70f)
-            val dotRadius = dotH / 2f
-            val gapY = (uh * 0.11f).coerceAtMost(barW * 0.52f)
+            // Pontos do SIM 2 grossos e nítidos como na v1, sem ultrapassar a 1ª barra do SIM 1
+            val dotH = (barW * 1.02f).coerceAtMost(uh * 0.23f)
+            val dotRadius = min(barW, dotH) / 2f
+            val gapY = (barW * 0.52f).coerceAtMost(uh * 0.11f)
             val topMaxH = (uh - dotH - gapY).coerceAtLeast(barW)
 
             val topBaseY = b.top + padTop + topMaxH
@@ -449,7 +453,7 @@ object StackedSignal {
                 rect.set(left, topBaseY - barH, right, topBaseY)
                 canvas.drawRoundRect(rect, barRadius, barRadius, paint)
 
-                // SIM secundário (traços discretos inferiores)
+                // SIM secundário (pontos encorpados inferiores)
                 paint.color = baseColor
                 paint.alpha = if (bottomLevel > i) activeAlpha else inactiveAlpha
                 rect.set(left, dotTopY, right, dotBottomY)
