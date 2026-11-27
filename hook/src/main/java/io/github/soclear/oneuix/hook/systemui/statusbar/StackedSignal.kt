@@ -258,8 +258,10 @@ object StackedSignal {
                 StackedSignalDrawable(imageView.resources.displayMetrics.density)
             }
         }
-        drawable.topLevel = slotLevels[0] ?: 0
-        drawable.bottomLevel = slotLevels[1] ?: 0
+        val primarySlot = getPrimarySlot()
+        val secondarySlot = if (primarySlot == 0) 1 else 0
+        drawable.topLevel = slotLevels[primarySlot] ?: 0
+        drawable.bottomLevel = slotLevels[secondarySlot] ?: 0
         return drawable
     }
 
@@ -397,10 +399,10 @@ object StackedSignal {
             style = Paint.Style.FILL
         }
         private val rect = RectF()
-        private val topRatios = floatArrayOf(0.32f, 0.54f, 0.77f, 1.0f)
+        private val topRatios = floatArrayOf(0.36f, 0.57f, 0.78f, 1.0f)
 
-        override fun getIntrinsicWidth(): Int = (15.5f * density).roundToInt()
-        override fun getIntrinsicHeight(): Int = (13.5f * density).roundToInt()
+        override fun getIntrinsicWidth(): Int = (14.8f * density).roundToInt()
+        override fun getIntrinsicHeight(): Int = (13.0f * density).roundToInt()
 
         override fun draw(canvas: Canvas) {
             val b = bounds
@@ -408,20 +410,25 @@ object StackedSignal {
 
             val w = b.width().toFloat()
             val h = b.height().toFloat()
-            val padX = w * 0.04f
-            val padY = h * 0.06f
-            val uw = w - 2f * padX
-            val uh = h - 2f * padY
 
-            val barW = uw / 6.16f
-            val gapX = barW * 0.72f
-            val radius = barW / 2f
+            val padLeft = w * 0.04f
+            val padRight = w * 0.10f
+            val padTop = h * 0.09f
+            val padBottom = h * 0.14f
 
-            val dotH = (barW * 1.18f).coerceAtMost(uh * 0.24f)
-            val gapY = (barW * 0.65f).coerceAtMost(uh * 0.12f)
+            val uw = w - padLeft - padRight
+            val uh = h - padTop - padBottom
+
+            val barW = uw / 5.68f
+            val gapX = barW * 0.56f
+            val barRadius = barW / 2f
+
+            val dotH = (uh * 0.15f).coerceAtMost(barW * 0.70f)
+            val dotRadius = dotH / 2f
+            val gapY = (uh * 0.11f).coerceAtMost(barW * 0.52f)
             val topMaxH = (uh - dotH - gapY).coerceAtLeast(barW)
 
-            val topBaseY = b.top + padY + topMaxH
+            val topBaseY = b.top + padTop + topMaxH
             val dotTopY = topBaseY + gapY
             val dotBottomY = dotTopY + dotH
 
@@ -432,21 +439,21 @@ object StackedSignal {
             paint.colorFilter = activeColorFilter
 
             for (i in 0 until 4) {
-                val left = b.left + padX + i * (barW + gapX)
+                val left = b.left + padLeft + i * (barW + gapX)
                 val right = left + barW
 
-                // SIM 1 (barras em cima)
+                // SIM principal / dados móveis (barras superiores)
                 val barH = (topMaxH * topRatios[i]).coerceAtLeast(barW)
                 paint.color = baseColor
                 paint.alpha = if (topLevel > i) activeAlpha else inactiveAlpha
                 rect.set(left, topBaseY - barH, right, topBaseY)
-                canvas.drawRoundRect(rect, radius, radius, paint)
+                canvas.drawRoundRect(rect, barRadius, barRadius, paint)
 
-                // SIM 2 (pontos por baixo)
+                // SIM secundário (traços discretos inferiores)
                 paint.color = baseColor
                 paint.alpha = if (bottomLevel > i) activeAlpha else inactiveAlpha
                 rect.set(left, dotTopY, right, dotBottomY)
-                canvas.drawRoundRect(rect, radius, radius, paint)
+                canvas.drawRoundRect(rect, dotRadius, dotRadius, paint)
             }
         }
 
