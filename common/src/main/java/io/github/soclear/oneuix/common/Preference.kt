@@ -24,7 +24,7 @@ data class Preference(
         val disableScreenWakeOnPowerUnplugged: Boolean = false,
         val disableLowBatteryDimming: Boolean = false,
         val disableFlagSecure: Boolean = false,
-                val removeAasaInstallRestriction: Boolean = false,
+        val removeAasaInstallRestriction: Boolean = false,
     )
 
     @Serializable
@@ -68,7 +68,7 @@ data class Preference(
             val hideLockscreenStatusBar: Boolean = false,
             val restoreBluetoothStatusBarIcon: Boolean = false,
             val stackedDualSimSignal: Boolean = false,
-
+            val wifiSignalStyle85: Boolean = false,
         ) {
             @Serializable
             data class NetWorkSpeed(
