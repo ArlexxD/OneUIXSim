@@ -8,6 +8,7 @@ import io.github.soclear.oneuix.hook.launcher.MediaPage
 import io.github.soclear.oneuix.hook.systemui.AOD
 import io.github.soclear.oneuix.hook.systemui.statusbar.ESIM
 import io.github.soclear.oneuix.hook.systemui.statusbar.StackedSignal
+import io.github.soclear.oneuix.hook.systemui.statusbar.WifiSignal
 import io.github.soclear.oneuix.hook.systemui.statusbar.HideBatteryIcon
 import io.github.soclear.oneuix.hook.systemui.Notification
 import io.github.soclear.oneuix.hook.systemui.QS
@@ -359,9 +360,13 @@ class Main : XposedModule() {
                         preference.systemUI.statusBar.physicalEsimAdapterSimSlot
                     )
                 }
-                
+
                 if (preference.systemUI.statusBar.stackedDualSimSignal) {
                     StackedSignal.apply()
+                }
+
+                if (preference.systemUI.statusBar.wifiSignalStyle85) {
+                    WifiSignal.apply()
                 }
 
                 if (preference.systemUI.statusBar.doubleTapStatusBarToSleep) {
@@ -605,7 +610,8 @@ class Main : XposedModule() {
         if (preference.android.disableFlagSecure) {
             DisableFlagSecure.hookSystemServer(classLoader)
         }
-            if (preference.android.removeAasaInstallRestriction) {
+
+        if (preference.android.removeAasaInstallRestriction) {
             Android.removeAasaInstallRestriction()
         }
     }
