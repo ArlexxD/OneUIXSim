@@ -461,4 +461,3 @@ object WifiSignal {
         override fun getOpacity(): Int = PixelFormat.TRANSLUCENT
     }
 }
-
