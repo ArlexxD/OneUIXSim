@@ -108,7 +108,7 @@ object WifiSignal {
                     return@intercept chain.proceed()
                 }
 
-                val resId = chain.args[0] as Int
+                val resId = chain.args[0] as? Int ?: return@intercept chain.proceed()
                 if (resId == 0) {
                     bypassedViews.add(imageView)
                     resourceExclamationState.remove(imageView)
@@ -173,7 +173,7 @@ object WifiSignal {
                 }
                 val result = chain.proceed()
                 if (imageView !in bypassedViews) {
-                    val level = (chain.args[0] as Int).coerceIn(0, 4)
+                    val level = (chain.args[0] as? Int)?.coerceIn(0, 4) ?: return@intercept result
                     currentWifiLevel = level
                     refreshAllViews()
                 }
@@ -243,7 +243,7 @@ object WifiSignal {
         val wifiManager = context.getSystemService(WifiManager::class.java) ?: return null
         val rssiFromInfo = (capabilities.transportInfo as? WifiInfo)?.rssi
         val rssi = when {
-            rssiFromInfo != null && rssiFromInfo != WifiInfo.INVALID_RSSI -> rssiFromInfo
+            rssiFromInfo != null && rssiFromInfo > -127 -> rssiFromInfo
             capabilities.signalStrength != NetworkCapabilities.SIGNAL_STRENGTH_UNSPECIFIED ->
                 capabilities.signalStrength
             else -> return null
